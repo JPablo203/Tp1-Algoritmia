@@ -1,0 +1,76 @@
+# Detección de Crisis Epilépticas en EEG
+
+Este proyecto realiza el análisis de señales EEG del dataset CHB-MIT, 
+enfocándose en la detección de crisis epilépticas a través de descriptores estadísticos por canal. 
+Se trabaja tanto por bloques (antes, durante y después de una crisis) como sobre toda la señal, 
+e incluye visualizaciones detalladas.
+Este Codigo sirve como plantilla para poder hacer anlisis de otros chb y .edg
+Para el mismo se utilizo el chb2
+
+---
+
+## Estructura General del Proyecto
+
+- `main.py`: Script principal que coordina el flujo completo del análisis.
+- `procesamiento.py`: Carga de señales y segmentación en bloques.
+- `descriptores.py`: Cálculo de métricas estadísticas y de correlación.
+- `graficos.py`: Generación de histogramas, boxplots, PDFs ajustadas y scatterplots.
+- `datos/`: Carpeta con los archivos `.edf` y `.txt` de anotaciones.
+- `figuras/`: Carpeta generada automáticamente con todas las visualizaciones. 
+    (Cuando se ejecuta el codigo se generan los graficos)
+
+---
+
+## Descripción de los Pasos Principales
+
+### 1. Carga y segmentación de señales EEG
+Se utiliza `pyedflib` para cargar archivos `.edf`, y el archivo `.txt` de resumen para obtener los tiempos de inicio y fin de crisis.
+
+- Se generan tres bloques de señal:
+  - `before`: 2 minutos antes de la crisis.
+  - `seizure`: durante la crisis.
+  - `after`: 2 minutos después.
+
+### 2. Cálculo de descriptores por canal
+Para cada bloque se calculan métricas básicas por canal:
+
+- **Varianza**
+- **Desviación estándar**
+- **Promedio del valor absoluto**
+- **Autocorrelación (lag 1)**
+- **Autocovarianza (lag 1)**
+
+Además, se calculan matrices entre canales:
+
+- **Covarianza**
+- **Correlación de Pearson**
+- **Correlación cruzada (lag 0)**
+
+### 3. Análisis visual (graficos.py)
+Se generan para cada descriptor:
+
+- Histogramas comparativos por bloque.
+- Diagramas de caja (boxplots).
+- Ajustes de distribución normal (PDF).
+- Scatterplots combinados para ver correlación entre descriptores.
+
+Las gráficas se guardan automáticamente en `figuras/escenario1` y `figuras/escenario2`.
+
+### 4. Detección de crisis por ventana deslizante
+Se implementa una ventana móvil sobre toda la señal (modo escenario 2).
+
+- Se calcula el percentil 80 de la varianza por ventana.
+- Se define un **umbral de detección** como:  
+  \\\( \mu_{\text{before}} + 3\sigma_{\text{before}} \\\)
+- Se registra el instante donde se supera el umbral.
+- Se calcula el retardo respecto al inicio real de la crisis.
+-Cuanto menor es el retaardo con respecto al inicio de la crisis mas preciso es el analisis
+
+---
+
+## Requisitos
+
+Instalar dependencias desde `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
