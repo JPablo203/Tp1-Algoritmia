@@ -100,6 +100,17 @@ def graficar_scatterplot(df_completo, desc_x, desc_y, carpeta):
     plt.savefig(os.path.join(carpeta, f"scatter_{desc_x}_{desc_y}.png"))
     plt.close()
 
+def graficar_heatmap_pearson(matriz, nombre_bloque, carpeta):
+    """
+    Genera un mapa de calor (heatmap) de la matriz de correlación de Pearson para un bloque.
+    """
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(matriz, cmap="coolwarm", square=True, cbar_kws={"shrink": 0.8})
+    plt.title(f"Correlación de Pearson - {nombre_bloque}")
+    plt.tight_layout()
+    plt.savefig(os.path.join(carpeta, f"heatmap_pearson_{nombre_bloque}.png"))
+    plt.close()
+
 def generar_todos_los_graficos(resultados, nombre_escenario="escenario1"):
     """
     Función principal que genera todas las gráficas para los descriptores:
@@ -125,3 +136,7 @@ def generar_todos_los_graficos(resultados, nombre_escenario="escenario1"):
     # Scatterplots sugeridos
     graficar_scatterplot(df, "Varianza", "Desviación estándar", carpeta)
     graficar_scatterplot(df, "Prom. valor absoluto", "Autocorrelación", carpeta)
+
+    for nombre_bloque, data in resultados.items():
+        matriz_pearson = data["matrices"]["Correlación de Pearson"]
+        graficar_heatmap_pearson(matriz_pearson, nombre_bloque, carpeta)
