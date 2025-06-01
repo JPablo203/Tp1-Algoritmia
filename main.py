@@ -1,3 +1,5 @@
+# main.py
+
 #Se separo el funcionamiento del codigo en distintos archivos para que sea mas comodo
 from procesamiento import cargar_datos, segmentar_senal
 from descriptores import calcular_todos_los_descriptores
@@ -9,9 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-
 #Ubicacion de los archivos .edf a analizar (Tomar nota que se utilizo un chb para hacer un codigo plantilla)
-
 archivo_edf = "datos/chb02/chb02_16.edf"
 archivo_summary = "datos/chb02/chb02-summary.txt"
 
@@ -30,23 +30,29 @@ print("Frecuencia de muestreo:", fs)
 print("Segmentos extraídos:")
 for nombre, bloque in segmentos.items():
     print(f" - {nombre}: {bloque.shape}")
-    
-# Muestra por consola los resultados de descriptores y matrices de correlación por bloque
-"""
-for nombre, resultado in resultados.items():
-    print(f"\nDescriptores por canal - {nombre.upper()}")
-    print(resultado["canal_a_canal"])
 
-    print(f"\nMatriz de correlación de Pearson - {nombre.upper()}")
-    print(pd.DataFrame(resultado["matrices"]["Correlación de Pearson"]).round(2))
-"""
+# Escenario 2: calcula los descriptores sobre ventanas deslizantes de la señal centrada
+senal_centrada = senal - np.mean(senal, axis=1, keepdims=True)
+ventana_muestras = int(fs * 5)   # 5 segundos
+paso_muestras = int(fs * 1)      # paso de 1 segundo
 
-# Escenario 2: calcula los descriptores para toda la señal centrada (media cero por canal)
-bloque_total = {
-    "completo": senal - np.mean(senal, axis=1, keepdims=True)  # centrado
+segmentos_ventaneados = []
+for inicio in range(0, senal.shape[1] - ventana_muestras + 1, paso_muestras):
+    ventana = senal_centrada[:, inicio:inicio + ventana_muestras]
+    segmentos_ventaneados.append(ventana)
+
+# Calcular descriptores por ventana y combinar
+descriptores_completo = [calcular_todos_los_descriptores({"ventana": v})["ventana"]["canal_a_canal"]
+                         for v in segmentos_ventaneados]
+
+# Concatenar todos los descriptores canal a canal
+df_completo = pd.concat(descriptores_completo, ignore_index=True)
+resultados_totales = {
+    "completo": {
+        "canal_a_canal": df_completo,
+        "matrices": calcular_todos_los_descriptores({"ventana": senal_centrada})["ventana"]["matrices"]
+    }
 }
-
-resultados_totales = calcular_todos_los_descriptores(bloque_total)
 
 # Escenario 1: genera los gráficos por bloque (before, seizure, after)  
 generar_todos_los_graficos(resultados, nombre_escenario="escenario1")
@@ -108,6 +114,9 @@ else:
 
 # ------------------ Gráfico de evolución de la varianza ------------------
 plt.figure(figsize=(12, 6))
+plt.axvspan(0, t_ini, color='green', alpha=0.1, label='Before')
+plt.axvspan(t_ini, t_fin, color='red', alpha=0.1, label='Seizure')
+plt.axvspan(t_fin, tiempos[-1], color='orange', alpha=0.1, label='After')
 plt.plot(tiempos, varianza_p80_ventanas, label="Percentil 80 de varianza por ventana")
 plt.axhline(umbral_varianza, color='red', linestyle='--', label="Umbral (3σ)")
 plt.axvline(t_ini, color='green', linestyle='--', label="Inicio de crisis")
@@ -119,21 +128,6 @@ plt.title("Detección de crisis por varianza (mejorada)")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
+os.makedirs("figuras", exist_ok=True)
 plt.savefig("figuras/deteccion_varianza_mejorada.png")
 plt.close()
-
-
-# ----------------- GUARDAR RESULTADOS EN .csv para ver en excel ------------------
-carpeta_resultados = "resultados_csv"
-os.makedirs(carpeta_resultados, exist_ok=True)
-
-for nombre, resultado in resultados.items():
-    base = os.path.join(carpeta_resultados, f"descriptores_{nombre}")
-    
-    # Descriptores canal a canal
-    resultado["canal_a_canal"].to_csv(f"{base}_canal.csv", index=False)
-    
-    # Matrices
-    pd.DataFrame(resultado["matrices"]["Correlación de Pearson"]).to_csv(f"{base}_corr_pearson.csv", index=False)
-    pd.DataFrame(resultado["matrices"]["Covarianza"]).to_csv(f"{base}_covarianza.csv", index=False)
-    pd.DataFrame(resultado["matrices"]["Correlación cruzada (lag 0)"]).to_csv(f"{base}_corr_cruzada.csv", index=False)
