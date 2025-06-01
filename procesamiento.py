@@ -1,3 +1,5 @@
+# procesamiento.py
+
 from pyedflib import highlevel # Librería para lectura de archivos EDF (formato usado para EEG)
 import numpy as np
 
