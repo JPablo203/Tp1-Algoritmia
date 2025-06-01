@@ -1,40 +1,11 @@
+# graficos.py
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import os
-from scipy.stats import norm
 import numpy as np
 
-def ajustar_pdf_y_graficar(df, descriptor, carpeta):
-    """
-    Ajusta una distribución normal (PDF) a los datos de un descriptor
-    y la grafica junto al histograma de los datos reales.
-
-    Parámetros:
-    - df: DataFrame con los descriptores
-    - descriptor: nombre del descriptor (columna) a analizar
-    - carpeta: directorio donde se guarda la figura
-    """
-    datos = df[descriptor].dropna()
-
-    # Ajustar distribución normal
-    mu, sigma = norm.fit(datos)
-
-    # Histograma de los datos
-    plt.figure(figsize=(10, 6))
-    sns.histplot(datos, bins=30, kde=False, stat="density", color="skyblue", label="Datos")
-
-    # Graficar PDF ajustada
-    x = np.linspace(datos.min(), datos.max(), 100)
-    y = norm.pdf(x, mu, sigma)
-    plt.plot(x, y, 'r--', label=f'N({mu:.2f}, {sigma:.2f})')
-
-    plt.title(f"Ajuste de PDF Normal para {descriptor}")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(os.path.join(carpeta, f"pdf_{descriptor}.png"))
-    plt.close()
 
 def preparar_df_comparativo(resultados):
     """
@@ -57,11 +28,12 @@ def preparar_df_comparativo(resultados):
 def graficar_histograma(df_completo, descriptor, carpeta):
     """
     Genera un histograma comparando la distribución de un descriptor
-    entre los distintos bloques (before, seizure, after).
+    entre los distintos bloques (before, seizure, after), con escala ajustada.
     """
-
     plt.figure(figsize=(10, 6))
+    q1, q99 = np.percentile(df_completo[descriptor].dropna(), [1, 99])
     sns.histplot(data=df_completo, x=descriptor, hue="bloque", kde=True, element="step", stat="density")
+    plt.xlim(q1, q99)
     plt.title(f"Histograma de {descriptor}")
     plt.grid(True)
     plt.tight_layout()
@@ -73,7 +45,6 @@ def graficar_boxplot(df_completo, descriptor, carpeta):
     Genera un boxplot (diagrama de cajas) del descriptor, separando por bloque.
     Útil para ver la dispersión y valores atípicos.
     """
-    
     plt.figure(figsize=(10, 6))
     sns.boxplot(data=df_completo, x="bloque", y=descriptor)
     plt.title(f"Diagrama de Cajas de {descriptor}")
@@ -91,7 +62,6 @@ def graficar_scatterplot(df_completo, desc_x, desc_y, carpeta):
     - desc_x: descriptor en el eje X
     - desc_y: descriptor en el eje Y
     """
-
     plt.figure(figsize=(10, 6))
     sns.scatterplot(data=df_completo, x=desc_x, y=desc_y, hue="bloque")
     plt.title(f"Dispersión: {desc_x} vs {desc_y}")
@@ -105,7 +75,7 @@ def graficar_heatmap_pearson(matriz, nombre_bloque, carpeta):
     Genera un mapa de calor (heatmap) de la matriz de correlación de Pearson para un bloque.
     """
     plt.figure(figsize=(10, 8))
-    sns.heatmap(matriz, cmap="coolwarm", square=True, cbar_kws={"shrink": 0.8})
+    sns.heatmap(matriz, cmap="coolwarm", square=True, annot=True, fmt=".1f", vmin=-1, vmax=1, cbar_kws={"shrink": 0.8})
     plt.title(f"Correlación de Pearson - {nombre_bloque}")
     plt.tight_layout()
     plt.savefig(os.path.join(carpeta, f"heatmap_pearson_{nombre_bloque}.png"))
@@ -114,13 +84,12 @@ def graficar_heatmap_pearson(matriz, nombre_bloque, carpeta):
 def generar_todos_los_graficos(resultados, nombre_escenario="escenario1"):
     """
     Función principal que genera todas las gráficas para los descriptores:
-    histogramas, diagramas de cajas, PDF ajustadas y gráficos de dispersión.
+    histogramas, diagramas de cajas y gráficos de dispersión.
 
     Parámetros:
     - resultados: salida de `calcular_todos_los_descriptores`
     - nombre_escenario: nombre de la carpeta donde se guardan las figuras
     """
-    
     carpeta = os.path.join("figuras", nombre_escenario)
     os.makedirs(carpeta, exist_ok=True)
 
@@ -131,7 +100,6 @@ def generar_todos_los_graficos(resultados, nombre_escenario="escenario1"):
     for descriptor in descriptores:
         graficar_histograma(df, descriptor, carpeta)
         graficar_boxplot(df, descriptor, carpeta)
-        ajustar_pdf_y_graficar(df, descriptor, carpeta)  # <-- nueva línea
 
     # Scatterplots sugeridos
     graficar_scatterplot(df, "Varianza", "Desviación estándar", carpeta)
